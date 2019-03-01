@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 18 17:37:21 2019
+
+@author: aewarfel
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Feb  3 11:29:47 2019
+
+@author: aewarfel
+"""
+import wfdb 
+
+import matplotlib.pyplot as plt 
+
+import numpy as np
+
+#record_name="p000020-2183-04-28-17-47n", 
+#pb_dir="mimic3wdb/matched/p00/p000020/", 
+
+def get_data(rec_name, rec_dir):
+    rec_sub = wfdb.rdsamp(record_name=rec_name, 
+					  pb_dir=rec_dir, 
+					  channel_names=["ABPSys", "ABPDias", "ABPMean"], 
+                      warn_empty=True)
+    data = rec_sub[0]
+    sys = data[:,0]
+    dias = data[:,1]
+    mean = data[:,2]
+    indices = range(len(sys))
+    return sys, dias, mean
+
+def findLeadingNonzero(arr):
+    
+    # idx_start the number of leading zeros
+    idx_start = 0
+    for elem in arr:
+        if (elem == 0):
+            idx_start += 1
+        else:
+            break
+    # return data based on how many leading zeros
+    
+    return idx_start
+    
+def findTrailingNonzero(arr):
+    idx_end=len(arr)
+    for elem in arr:
+        if (arr[idx_end-1] == 0):
+            idx_end-=1
+        else:
+            break
+    
+    return idx_end      
+        
+def plotData(sys, dias, mean):
+    indicessys= range (len(sys))
+    indicesdias= range (len(dias))
+    indicesmean= range (len(mean))
+    plt.plot(indicessys, sys, indicesdias, dias, indicesmean, mean)
+    plt.show()
+
+def smoothData(data, order, Wn):
+    from scipy import signal
+    b, a = signal.butter(order, Wn, analog=True)
+    b, a = signal.bilinear(b,a)
+    return signal.lfilter(b, a, data)
+
+def getExampleData():
+    rn = "p000020-2183-04-28-17-47n"
+    rd = "mimic3wdb/matched/p00/p000020/"
+    s, d, m, = get_data(rn, rd)
+    
+    print(s)
+    print(d)
+    print(m)
+    
+    start_s = findLeadingNonzero(s)
+    start_d = findLeadingNonzero(d)
+    start_m = findLeadingNonzero(m)
+    
+    end_s = findTrailingNonzero(s)
+    end_d = findTrailingNonzero(d)
+    end_m = findTrailingNonzero(m)
+    
+    real_start = max(start_d, start_m, start_s)
+    real_end = min(end_d, end_m, end_s)
+
+    print("real start = {}".format(real_start))    
+    print("real end = {}".format(real_end))
+    
+    S1 = s[real_start:real_end]
+    D1 = d[real_start:real_end]
+    M1 = m[real_start:real_end]
+    
+    return S1, D1, M1
+    
+if __name__ == "__main__":
+    S1, D1, M1 = getExampleData()
+
+    plotData(S1, D1, M1)
+        
+    np.clip(M1, 35, 250, out=M1)
+    np.clip(S1, 40, 300, out=S1)
+    np.clip(D1, 20, 250, out=D1)
+
+    plotData(S1, D1, M1)
+    
+def plotMean(M1):
+    indicesM1= range (len(M1))
+    plt.plot(indicesM1, M1)
+    plt.show()
+    
+
+######START DEVINS CODE######
+
+def remove_zeros(M1):
+    idx_mean_lz = findLeadingNonzero(M1)
+    idx_mean_tz = findTrailingNonzero(M1)
+
+def identify_spike_indices(M1):
+    md = M1
+    md_abs = abs(md)
+    idx_spikes = np.where(md_abs > 10)[0] + 1
+    idx_ma = range(len(M1))
+    plt.plot(idx_ma, M1, 'k', idx_spikes, M1[idx_spikes], 'r*')
+    plt.show()
+    idx_spikes_diff = np.diff(idx_spikes)
+    idx_isd = np.where(idx_spikes_diff < 5)[0]
+    i = 0
+    spike_values = ma[idx_spikes[int(idx_isd[i]):idx_spikes[int(idx_isd[i]+1)]]]
+    #for elem in ma:
+        #if i < len(idx_isd)-1:
+            #spike_indicies = idx_spikes[int(idx_isd[i]):int(idx_isd[i]+1)]
+            #i += 1
+        #else:
+            #break
+    print(spike_values)
+    
+    return spike_values
+
+mspikes = identify_spike_indices(M1)
+    
+
+plotMean(M1)
